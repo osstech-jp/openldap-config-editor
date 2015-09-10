@@ -85,7 +85,7 @@ def ldapconnect(ldapurl,rootdn,password):
     except:
         return "<h1> Err! </h1>\
                 <p>{err}</p>".format(err=sys.exc_info())
-   
+  
     return ld
 
 ####################
@@ -101,9 +101,12 @@ def ldapmodify(ld,datas):
             modlist.append( (ldap.MOD_ADD,PARAMETER,data) )
     print "modlist is {modlist}".format(modlist=modlist)
 
-    # 作成したmodデータを用いてModify 
-    ld.modify_ext_s(BASE,modlist)
-
+    # 作成したmodデータを用いてModify
+    try :
+        ld.modify_ext_s(BASE,modlist)
+    except:
+        return "<h1> Err! </h1>\
+                <p>{err}</p>".format(err=sys.exc_info())
 
 
 ###############################
@@ -111,7 +114,11 @@ def ldapmodify(ld,datas):
 ###############################
 def ldapsearch(ld,base,scope,parameter):
     # 全属性の取得
-    search_results = ld.search_ext_s(BASE,SCOPE)
+    try:
+        search_results = ld.search_ext_s(BASE,SCOPE)
+    except:
+        return "<h1> Err! </h1>\
+                <p>{err}</p>".format(err=sys.exc_info())
 
     # PARAMETERの値を取得
     datalist = search_results[0][1].get(PARAMETER,[])
