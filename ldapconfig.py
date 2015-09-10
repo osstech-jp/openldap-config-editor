@@ -10,8 +10,9 @@ from flask import request
 app = Flask(__name__)
 
 LDAPURL='ldap://localhost/'
-ROOTDN='cn=admin,dc=example,dc=com'
-PASS='password'
+ROOTDN=',dc=example,dc=com'
+USER = ''
+PASS=''
 BASE='cn=config'
 SCOPE=ldap.SCOPE_BASE
 FILTER=""
@@ -21,28 +22,58 @@ logleveldata=[["1","trace"],["2","packets"],["4","args"],["8","conns"],["16","BE
               ["512","stats2"],["1024","shell"],["2048","parse"]]
 PARAMETER = 'olcLogLevel'
 
+@app.route("/" , methods=['GET','POST'])
+def login():
+    print "LOGIN"
+    err = False
+    jump= False
+    
+    if request.method == 'POST':
+        # ユーザー名、パスワードの取得
+        USER = request.form.get('user').decode('utf-8')
+        PASS = request.form.get('pass').decode('utf-8')
 
-@app.route("/" , methods=['GET' , 'POST'])
-def index():
+        ROOT = "cn=" + USER + ROOTDN.decode('utf-8')
 
+        # 入力されたデータでldapサーバーへ接続
+        ld = ldapconnect(LDAPURL,ROOT,PASS)
+        
+        # 認証に失敗した場合エラーを出力
+        if ld == -1:
+            err = True
+            print "Err"
+            return render_template('loginform.html',err = err, jump = jump)
+        # 成功した場合ldapConfigへ移動
+        else :
+            print "Success"
+            jump = True
+            return render_template('loginform.html',err = err, jump = jump)
+    if request.method == 'GET':
+        return render_template('loginform.html',err = err, jump = jump)
+       
+
+@app.route("/ldapconfig" , methods=['GET' , 'POST'])
+def index() :
     POSTDATA = ""
     errlist=[]
 
     #####################
     # ldapサーバーへ接続#
     #####################
-    ld = ldapconnect(LDAPURL,ROOTDN,PASS)
+    ROOT = "cn=admin" + ROOTDN.decode('utf-8')
+    PASS = "password"
+    ld = ldapconnect(LDAPURL,ROOT,PASS)
+
     #############
     # POSTの処理#
     #############
     if request.method == 'POST':
         # POSTされたデータの取得
         CHECK = request.form.keys()
-        print "checkboxLOG"
         # チェックされた値のリストを作成
-        CHECK.remove('sendbutton')
-        print CHECK
+        CHECK.remove('button')
 
+        print CHECK
         # チェックボックスが空ならnoneを指定 
         if len(CHECK) == 0:
             CHECK.append('none')
@@ -56,12 +87,9 @@ def index():
 
     ###############
     # ページの表示#
-    ###############
-    
+    ############### 
     # データの取得
     loglevel = ldapsearch(ld,BASE,SCOPE,PARAMETER)
-    print "loglevel"
-    print loglevel
 
     # logleveldataと比較し、TrueFalseの一覧リストを作成
     for loop in range(0,len(logleveldata)):
@@ -69,7 +97,6 @@ def index():
             logleveldata[loop].append(logleveldata[loop][1] in loglevel)
         else :
             logleveldata[loop][2] = (logleveldata[loop][1] in loglevel)
-    
     # ページヘの出力
     return render_template('ldapconfig.html',loglevels=logleveldata, errlist=errlist)
 
@@ -84,8 +111,7 @@ def ldapconnect(ldapurl,rootdn,password):
         ld=ldap.initialize(ldapurl)
         ld.simple_bind_s(rootdn,password)
     except:
-        return "<h1> Err! </h1>\
-                <p>{err}</p>".format(err=sys.exc_info())
+        return -1
   
     return ld
 
@@ -100,14 +126,12 @@ def ldapmodify(ld,datas):
             modlist.append( (ldap.MOD_REPLACE,PARAMETER,data) )
         else:
             modlist.append( (ldap.MOD_ADD,PARAMETER,data) )
-    print "modlist is {modlist}".format(modlist=modlist)
 
     # 作成したmodデータを用いてModify
     try :
         ld.modify_ext_s(BASE,modlist)
     except:
-        return "<h1> Err! </h1>\
-                <p>{err}</p>".format(err=sys.exc_info())
+        return "<h1> ModifyErr! </h1><p>{err}</p>".format(err=sys.exc_info())
 
 
 ###############################
@@ -118,8 +142,7 @@ def ldapsearch(ld,base,scope,parameter):
     try:
         search_results = ld.search_ext_s(BASE,SCOPE)
     except:
-        return "<h1> Err! </h1>\
-                <p>{err}</p>".format(err=sys.exc_info())
+        return "<h1> SearchErr! </h1> <p>{err}</p>".format(err=sys.exc_info())
 
     # PARAMETERの値を取得
     datalist = search_results[0][1].get(PARAMETER,[])

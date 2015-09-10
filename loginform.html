@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html>
+<title>LDAPLogin</title>
+
+<head></head>
+<body>
+<h1>LDAPConfig ログインフォーム</h1>
+
+{% if err %}
+    <strong>ユーザー名またはパスワードが違います</strong>
+{% endif %}
+
+{% if jump %}
+    <p>ログインします</p>
+    <META http-equiv="refresh" content="1;url=http://localhost:5000/ldapconfig">
+{% endif %}
+
+<form action="/" method="post">
+    <p>UserName<input type="text" name="user" required ></p>
+    <p>PassWord<input type="password" name="pass" required ></p>
+    <input type="submit" name="button" value="送信" >
+</form>
+
+</body>
+
+</html>
