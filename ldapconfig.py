@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
 
 import ldap
 import sys
@@ -19,7 +19,7 @@ ATTR=None
 logleveldata=[["1","trace"],["2","packets"],["4","args"],["8","conns"],["16","BER"],\
               ["32","filter"],["64","config"],["128","ACL"],["256","stats"],\
               ["512","stats2"],["1024","shell"],["2048","parse"]]
-
+PARAMETER = 'olcLogLevel'
 
 
 @app.route("/" , methods=['GET' , 'POST'])
@@ -52,24 +52,24 @@ def index():
          # 全属性の取得
         search_results = ld.search_ext_s(BASE,SCOPE)
         # loglevelの取得
-        loglevel=search_results[0][1].get('olcLogLevel',[])
+        loglevel=search_results[0][1].get(PARAMETER,[])
 
         # errlistにデータが無ければmodify
         if len(errlist) == 0 and request.method == 'POST':
             mod_attr=[]
             for item in splitdata:
                 if len(mod_attr) == 0:
-                    mod_attr.append( (ldap.MOD_REPLACE,'olcLogLevel',item) )
+                    mod_attr.append( (ldap.MOD_REPLACE,PARAMETER,item) )
                 else:
-                    mod_attr.append( (ldap.MOD_ADD,'olcLogLevel',item) )
+                    mod_attr.append( (ldap.MOD_ADD,PARAMETER,item) )
             print "mod_attr is {data}".format(data=mod_attr)
 
            # 作成したmodデータを用いてModify 
-            ld.modify_ext_s('cn=config',mod_attr)
+            ld.modify_ext_s(BASE,mod_attr)
                     
             # データの再取得
             search_results = ld.search_ext_s(BASE,SCOPE)
-            loglevel=search_results[0][1].get('olcLogLevel',[])
+            loglevel=search_results[0][1].get(PARAMETER,[])
 
     except:
         return "<h1>Error!!</h1><p>{err}</p>".format(err=sys.exc_info())
