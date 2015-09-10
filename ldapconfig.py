@@ -51,18 +51,8 @@ def index():
 
         # errlistにデータが無ければmodify
         if len(errlist) == 0:
-            # modlistの作成
-            mod_attr=[]
-            for item in splitdata:
-                if len(mod_attr) == 0:
-                    mod_attr.append( (ldap.MOD_REPLACE,PARAMETER,item) )
-                else:
-                    mod_attr.append( (ldap.MOD_ADD,PARAMETER,item) )
-            print "mod_attr is {data}".format(data=mod_attr)
-
-           # 作成したmodデータを用いてModify 
-            ld.modify_ext_s(BASE,mod_attr)
-                    
+            ldapmodify(ld,splitdata)
+                               
     ############
     # GETの処理#
     ############
@@ -94,11 +84,27 @@ def ldapconnect(ldapurl,rootdn,password):
         ld=ldap.initialize(ldapurl)
         ld.simple_bind_s(rootdn,password)
     except:
-        return "<h1>Error!!</h1><p>{err}</p>".format(err=sys.exc_info())
+        return "<h1> Err! </h1>\
+                <p>{err}</p>".format(err=sys.exc_info())
    
     return ld
-   
-    
+
+####################
+#ldapmodifyする関数#
+####################
+def ldapmodify(ld,datas):
+    # modlistの作成
+    modlist=[]
+    for data in datas:
+        if len(modlist) == 0:
+            modlist.append( (ldap.MOD_REPLACE,PARAMETER,data) )
+        else:
+            modlist.append( (ldap.MOD_ADD,PARAMETER,data) )
+    print "modlist is {modlist}".format(modlist=modlist)
+
+    # 作成したmodデータを用いてModify 
+    ld.modify_ext_s(BASE,modlist)
+
 
 
 if __name__=='__main__':
