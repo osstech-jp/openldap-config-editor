@@ -27,14 +27,20 @@ def index():
 
     POSTDATA = ""
     errlist=[]
-    # POSTされたデータチェック
+
+    #####################
+    # ldapサーバーへ接続#
+    #####################
+    ld = ldapconnect(LDAPURL,ROOTDN,PASS)
+    #############
+    # POSTの処理#
+    #############
     if request.method == 'POST':
         # POSTされたデータの取得
         POSTDATA =request.form['adddata'].encode('utf-8')
         
         # カンマ区切りで分割
-        splitdata =  [x.strip() for x in POSTDATA.split(',')]
-        print splitdata
+        splitdata =  [x.strip() for x in POSTDATA.split(',')] # 両端スペースの除去
 
         # POSTされたデータのチェック
         for item in splitdata:
@@ -43,19 +49,9 @@ def index():
                 errlist.append(item)
         print POSTDATA + " is {result}".format(result=errlist)
 
-
-    try:
-
-        # ldapサーバーへ接続
-        ld=ldap.initialize(LDAPURL)
-        ld.simple_bind_s(ROOTDN,PASS)
-         # 全属性の取得
-        search_results = ld.search_ext_s(BASE,SCOPE)
-        # loglevelの取得
-        loglevel=search_results[0][1].get(PARAMETER,[])
-
         # errlistにデータが無ければmodify
-        if len(errlist) == 0 and request.method == 'POST':
+        if len(errlist) == 0:
+            # modlistの作成
             mod_attr=[]
             for item in splitdata:
                 if len(mod_attr) == 0:
@@ -67,14 +63,18 @@ def index():
            # 作成したmodデータを用いてModify 
             ld.modify_ext_s(BASE,mod_attr)
                     
-            # データの再取得
-            search_results = ld.search_ext_s(BASE,SCOPE)
-            loglevel=search_results[0][1].get(PARAMETER,[])
+    ############
+    # GETの処理#
+    ############
 
-    except:
-        return "<h1>Error!!</h1><p>{err}</p>".format(err=sys.exc_info())
+    ###############
+    # ページの表示#
+    ###############
 
-
+    # 全属性の取得
+    search_results = ld.search_ext_s(BASE,SCOPE)
+    # loglevelの取得
+    loglevel=search_results[0][1].get(PARAMETER,[])
     for loop in range(0,len(logleveldata)):
         if len(logleveldata[len(logleveldata)-1]) < 3:
             logleveldata[loop].append(logleveldata[loop][1] in loglevel)
@@ -83,6 +83,22 @@ def index():
     # ページヘの出力
     return render_template('ldapconfig.html',loglevels=logleveldata, errlist=errlist)
 
+
+
+
+####################
+#ldapに接続する関数#
+####################
+def ldapconnect(ldapurl,rootdn,password):
+    try :
+        ld=ldap.initialize(ldapurl)
+        ld.simple_bind_s(rootdn,password)
+    except:
+        return "<h1>Error!!</h1><p>{err}</p>".format(err=sys.exc_info())
+   
+    return ld
+   
+    
 
 
 if __name__=='__main__':
