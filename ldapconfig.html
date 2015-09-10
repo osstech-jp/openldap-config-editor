@@ -1,0 +1,70 @@
+<!DOCTYPE HTML>
+<html>
+<title>LDAPconfig</title>
+
+<head>
+    <style type="text/css">
+        table {
+            border: 3px #000000 double;
+        }
+
+        td {
+            border: 1px #000000 solid;
+        }
+
+        th {
+            border: 1px #000000 solid;
+            background-color: #87cefa;
+            text-align: center;
+            vertical-align: middle;
+        }
+        ul {
+            margin: 0 0 0 1em;
+            padding: 0;
+        }
+
+    </style>
+</head>
+
+
+<body>
+<h1>LDAPconfing</h1>
+
+<p>現在のLogLevel設定状況</p>
+
+<table>
+<tr>
+    <th>bit</th>
+    <th>levelname</th>
+    <th>state</th>
+</tr>
+{% for loglevel in loglevels %}
+
+<tr>
+    {% for item in loglevel %}
+        {% if item==True %}
+            <td bgcolor="#ff0000">
+        {% else %}
+            <td>
+        {% endif %}
+                {{ item }}
+            </td>
+    {% endfor %}
+</tr>
+
+{% endfor %}
+</table>
+
+<h1>データの変更</h1>
+
+<form action="/" method="post">
+    <input type="text" name="adddata" required>
+    <input type="submit" value="送信" name="sendbutton">
+</form>
+
+{% for errword in errlist %}
+    <p>{{errword}}</p>
+{% endfor %}
+</body>
+
+</html>
