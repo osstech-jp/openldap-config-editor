@@ -37,21 +37,18 @@ def index():
     #############
     if request.method == 'POST':
         # POSTされたデータの取得
-        POSTDATA =request.form['adddata'].encode('utf-8')
+        CHECK = request.form.keys()
+        print "checkboxLOG"
+        # チェックされた値のリストを作成
+        CHECK.remove('sendbutton')
+        print CHECK
+
+        # チェックボックスが空ならnoneを指定 
+        if len(CHECK) == 0:
+            CHECK.append('none')
         
-        # カンマ区切りで分割
-        splitdata =  [x.strip() for x in POSTDATA.split(',')] # 両端スペースの除去
-
-        # POSTされたデータのチェック
-        for item in splitdata:
-            # logleveldataに存在しなければerrlistに追加していく
-            if not item in [x[1] for x in logleveldata]:
-                errlist.append(item)
-        print POSTDATA + " command has errlist {result}".format(result=errlist)
-
-        # errlistにデータが無ければmodify
-        if len(errlist) == 0:
-            ldapmodify(ld,splitdata)
+        # CHECKの値でmodify
+        ldapmodify(ld,CHECK)
                                
     ############
     # GETの処理#
@@ -60,15 +57,19 @@ def index():
     ###############
     # ページの表示#
     ###############
-
+    
+    # データの取得
     loglevel = ldapsearch(ld,BASE,SCOPE,PARAMETER)
     print "loglevel"
     print loglevel
+
+    # logleveldataと比較し、TrueFalseの一覧リストを作成
     for loop in range(0,len(logleveldata)):
         if len(logleveldata[len(logleveldata)-1]) < 3:
             logleveldata[loop].append(logleveldata[loop][1] in loglevel)
         else :
             logleveldata[loop][2] = (logleveldata[loop][1] in loglevel)
+    
     # ページヘの出力
     return render_template('ldapconfig.html',loglevels=logleveldata, errlist=errlist)
 

@@ -32,6 +32,8 @@
 
 <p>現在のLogLevel設定状況</p>
 
+
+<form action="/" method="post">
 <table>
 <tr>
     <th>bit</th>
@@ -41,30 +43,30 @@
 {% for loglevel in loglevels %}
 
 <tr>
+    {% set l  = loop.index0 %}
     {% for item in loglevel %}
+        
         {% if item==True %}
             <td bgcolor="#ff0000">
+            <input type="checkbox", name="{{ loglevel[1] }}" checked>
+            
+        {% elif item==False %}
+            <td>
+            <input type="checkbox", name="{{ loglevel[1] }}"  > 
         {% else %}
             <td>
         {% endif %}
-                {{ item }}
-            </td>
+        {{ item }}
+        </td>
     {% endfor %}
 </tr>
 
 {% endfor %}
 </table>
 
-<h1>データの変更</h1>
-
-<form action="/" method="post">
-    <input type="text" name="adddata" required>
-    <input type="submit" value="送信" name="sendbutton">
+<input type="submit" value="送信" name="sendbutton">
 </form>
 
-{% for errword in errlist %}
-    <p>{{errword}}</p>
-{% endfor %}
 </body>
 
 </html>
