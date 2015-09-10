@@ -47,7 +47,7 @@ def index():
             # logleveldataに存在しなければerrlistに追加していく
             if not item in [x[1] for x in logleveldata]:
                 errlist.append(item)
-        print POSTDATA + " is {result}".format(result=errlist)
+        print POSTDATA + " command has errlist {result}".format(result=errlist)
 
         # errlistにデータが無ければmodify
         if len(errlist) == 0:
@@ -61,10 +61,9 @@ def index():
     # ページの表示#
     ###############
 
-    # 全属性の取得
-    search_results = ld.search_ext_s(BASE,SCOPE)
-    # loglevelの取得
-    loglevel=search_results[0][1].get(PARAMETER,[])
+    loglevel = ldapsearch(ld,BASE,SCOPE,PARAMETER)
+    print "loglevel"
+    print loglevel
     for loop in range(0,len(logleveldata)):
         if len(logleveldata[len(logleveldata)-1]) < 3:
             logleveldata[loop].append(logleveldata[loop][1] in loglevel)
@@ -105,6 +104,19 @@ def ldapmodify(ld,datas):
     # 作成したmodデータを用いてModify 
     ld.modify_ext_s(BASE,modlist)
 
+
+
+###############################
+#PARAMETERの値をsearchする関数#
+###############################
+def ldapsearch(ld,base,scope,parameter):
+    # 全属性の取得
+    search_results = ld.search_ext_s(BASE,SCOPE)
+
+    # PARAMETERの値を取得
+    datalist = search_results[0][1].get(PARAMETER,[])
+
+    return datalist
 
 
 if __name__=='__main__':
