@@ -6,6 +6,7 @@ import csv
 
 from flask import Flask, render_template
 from flask import request
+from flask import redirect, url_for
 
 app = Flask(__name__)
 
@@ -26,14 +27,14 @@ PARAMETER = 'olcLogLevel'
 def login():
     print "LOGIN"
     err = False
-    jump= False
     
     if request.method == 'POST':
         # ユーザー名、パスワードの取得
-        USER = request.form.get('user').decode('utf-8')
-        PASS = request.form.get('pass').decode('utf-8')
-
-        ROOT = "cn=" + USER + ROOTDN.decode('utf-8')
+        USER = request.form.get('user')
+        PASS = request.form.get('pass')
+        
+        # 乳力された文字列を結合してROOTDNの作成
+        ROOT = "cn=" + USER + ROOTDN
 
         # 入力されたデータでldapサーバーへ接続
         ld = ldapconnect(LDAPURL,ROOT,PASS)
@@ -42,14 +43,13 @@ def login():
         if ld == -1:
             err = True
             print "Err"
-            return render_template('loginform.html',err = err, jump = jump)
+            return render_template('loginform.html',err = err,)
         # 成功した場合ldapConfigへ移動
         else :
             print "Success"
-            jump = True
-            return render_template('loginform.html',err = err, jump = jump)
+            return redirect('http://localhost:5000/ldapconfig')
     if request.method == 'GET':
-        return render_template('loginform.html',err = err, jump = jump)
+        return render_template('loginform.html',err = False,)
        
 
 @app.route("/ldapconfig" , methods=['GET' , 'POST'])
