@@ -36,31 +36,25 @@
 
 <form action="/ldapconfig" method="post">
 <table>
-<tr>
-    <th>bit</th>
-    <th>levelname</th>
-    <th>state</th>
-</tr>
-{% for loglevel in loglevels %}
-
-<tr>
-    {% for item in loglevel %}
-        
-        {% if item==True %}
-            <td bgcolor="#ff0000">
-            <input type="checkbox", name="{{ loglevel[1] }}" checked>
-            
-        {% elif item==False %}
-            <td>
-            <input type="checkbox", name="{{ loglevel[1] }}"  > 
+    <tr>
+        <th>bit</th>
+        <th>levelname</th>
+        <th>state</th>
+    </tr>
+    {% for loglevel in loglevels|dictsort(true) %}
+    <tr>
+        <td>{{ loglevel[0] }}</td>
+        <td align="center">{{ loglevel[1] }}</td>
+        {% if loglevel[1] in loglevelstate %}
+            <td align="center" bgcolor="ff0000">
+                <input type="checkbox" name="{{ loglevel[1] }}" checked>
+            </td>
         {% else %}
-            <td>
+            <td align="center">
+                <input type="checkbox" name="{{ loglevel[1] }}">
+            </td>
         {% endif %}
-        {{ item }}
-        </td>
-    {% endfor %}
-</tr>
-
+    </tr>
 {% endfor %}
 </table>
     <input id="submitbutton" type="submit" name="button" value="送信">

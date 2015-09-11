@@ -43,10 +43,10 @@ def login():
 
 @app.route("/ldapconfig", methods=['GET', 'POST'])
 def index():
-    logleveldata = [["1", "trace"], ["2", "packets"], ["4", "args"],
-                    ["8", "conns"], ["16", "BER"], ["32", "filter"],
-                    ["64", "config"], ["128", "ACL"], ["256", "stats"],
-                    ["512", "stats2"], ["1024", "shell"], ["2048", "parse"]]
+    logleveldata = {1: "trace", 2: "packets", 4: "args",
+                    8: "conns", 16: "BER", 32: "filter",
+                    64: "config", 128: "ACL", 256: "stats",
+                    512: "stats2", 1024: "shell", 2048: "parse"}
 
     POSTDATA = ""
 
@@ -65,15 +65,9 @@ def index():
 
         ldapmodify(ld, check)
 
-    loglevel = ldapsearch(ld, BASE, SCOPE, PARAMETER)
+    loglevelstate = ldapsearch(ld, BASE, SCOPE, PARAMETER)
 
-    for loop in range(0, len(logleveldata)):
-        if len(logleveldata[len(logleveldata)-1]) < 3:
-            logleveldata[loop].append(logleveldata[loop][1] in loglevel)
-        else:
-            logleveldata[loop][2] = (logleveldata[loop][1] in loglevel)
-
-    return render_template('ldapconfig.html', loglevels=logleveldata)
+    return render_template('ldapconfig.html', loglevels=logleveldata, loglevelstate=loglevelstate)
 
 
 '''
