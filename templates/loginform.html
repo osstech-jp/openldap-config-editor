@@ -5,12 +5,30 @@
 <head>
 <style>
     table{
-        border: 10px #ff0000 solid;
-        padding: 10px;
-        font-size: 20px;
+        border:     5px #000000 solid;
+        padding:    10px;
+        font-size:  20px;
+        background: #cccccc;
     }
     td {
         padding: 10px;
+    }
+    input#submitbutton{
+        font-size:      20px;
+        font-weight:    bold;
+        width:          100px;
+        height:         50px;
+        background:     #0000aa;
+        color:          #ffffff;
+    }
+    input#submitbutton:hover {
+        background:     #0000ff;
+        color:          #ffffff;
+    }
+    strong{
+        font-size:  16px;
+        color:      #ff2222;
+
     }
 </style>
 </head>
@@ -33,8 +51,7 @@
     </tr>
     <tr align="center" size="15">
         <td colspan="2">
-            <input type="submit" name="button" value="login" 
-            style="width:100px;height:50px;font-size:20px" >
+            <input id="submitbutton" type="submit"  name="button" value="login"> 
         </td>
     </tr>
 </table>

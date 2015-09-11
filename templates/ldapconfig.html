@@ -6,6 +6,7 @@
     <style type="text/css">
         table {
             border: 3px #000000 double;
+            align:center;
         }
 
         td {
@@ -18,11 +19,11 @@
             text-align: center;
             vertical-align: middle;
         }
-        ul {
-            margin: 0 0 0 1em;
-            padding: 0;
+        input#submitbutton{
+            font-size:  20px;
+            width:  200px;
+            height: 30px;
         }
-
     </style>
 </head>
 
@@ -43,7 +44,6 @@
 {% for loglevel in loglevels %}
 
 <tr>
-    {% set l  = loop.index0 %}
     {% for item in loglevel %}
         
         {% if item==True %}
@@ -63,10 +63,9 @@
 
 {% endfor %}
 </table>
+    <input id="submitbutton" type="submit" name="button" value="送信">
 
-<input type="submit" name="button" value="送信">
 </form>
-
 </body>
 
 </html>
