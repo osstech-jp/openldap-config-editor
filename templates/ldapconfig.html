@@ -37,6 +37,7 @@
 
 
 <form action="/" method="post">
+<input name=csrf type=hidden value="{{ csrftoken() }}">
 <table>
     <tr>
         <th>bit</th>
