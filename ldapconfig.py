@@ -35,8 +35,9 @@ def csrf_protect():
     if request.method == "POST":
         logging.debug("csrf_protect")
         token = session.pop(CSRFTOKEN, None)
-        if not token or token != request.form.get('csrf'):
+        if not token or str(token) != request.form.get('csrf'):
             abort(403)
+        logging.debug('csrf clear\n')
 
 
 def create_token():
@@ -68,7 +69,6 @@ def login():
             logging.info('login success')
             logging.debug('form data %s',request.form)
             session[LOGINKEY] = request.form.get('user')
-            session[CSRFTOKEN] = request.form.get('csrf')
             return redirect('/')
 
     if request.method == 'GET':
@@ -82,7 +82,7 @@ def index():
 
     if LOGINKEY not in session:
             logging.info('not login')
-            return redirect('login')
+            return redirect('/login')
 
 
     logleveldata = {1: "trace", 2: "packets", 4: "args",
@@ -101,25 +101,18 @@ def index():
     logging.debug('pass is [%s]', PASS)
 
     if request.method == 'POST':
-
-        token = session.pop(CSRFTOKEN)
-
-        logging.debug('requestkeys : %s',request.form)
-        if str(token) != request.form.get('csrf'):
-            logging.error("不正なアクセス")
-            session.pop('loginuser',None)
-            session.pop('csrf'.None)
-            return redirect('/login')
+        
         check = request.form.keys()
         logging.debug("POSTdata : %s",request.form)
         if 'logoutbutton' in request.form.keys():
-            session.pop('loginuser', None)
+            session.pop('loginuser')
+
             return redirect('/login')
 
         if 'sendbutton' in request.form.keys():
             '''
              チェックボックスの状態のみのデータにするため
-             ボタンの値を除去
+             ボタンとCSRFの値を除去
             '''
             check.remove('sendbutton')
             check.remove('csrf')
@@ -168,6 +161,7 @@ def ldapmodify(ld, datas):
         ld.modify_ext_s(BASE, modlist)
     except:
         logging.error("modify err : %s", sys.exc_info())
+        logging.error("modlist : %s",modlist)
         return False
 
 '''
