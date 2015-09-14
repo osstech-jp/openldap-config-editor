@@ -2,12 +2,14 @@
 
 import ldap
 import sys
+import logging
 
-from flask import Flask, render_template
-from flask import request
-from flask import redirect
+from flask import Flask, render_template, redirect
+from flask import request, escape, session
 
 app = Flask(__name__)
+
+app.config['SECRET_KEY'] = 'test'
 
 LDAPURL = 'ldap://localhost/'
 DOMAIN = ',dc=example,dc=com'
@@ -17,11 +19,16 @@ FILTER = ""
 ATTR = None
 PARAMETER = 'olcLogLevel'
 
+LOGINKEY = 'loginuser'
 
-@app.route("/", methods=['GET', 'POST'])
+logging.basicConfig(level=logging.DEBUG)
+
+
+@app.route("/login", methods=['GET', 'POST'])
 def login():
 
-    err = False
+    logging.info("login page path:%s", request.path)
+    logging.debug('sessiondata : %s', session)
 
     if request.method == 'POST':
         user = request.form.get('user')
@@ -32,17 +39,26 @@ def login():
         ld = ldapconnect(LDAPURL, ROOT, password)
 
         if not ld:
-            err = True
-            return render_template('loginform.html', err=err,)
+            logging.info('login faild')
+            return render_template('loginform.html', err=True)
         else:
-            return redirect('/ldapconfig')
+            logging.info('login success')
+            session[LOGINKEY] = request.form.get('user')
+            return redirect('/')
 
     if request.method == 'GET':
-        return render_template('loginform.html', err=False,)
+        return render_template('loginform.html', err=False)
 
 
-@app.route("/ldapconfig", methods=['GET', 'POST'])
+@app.route("/", methods=['GET', 'POST'])
 def index():
+    logging.info('config page path:%s', request.path)
+    logging.debug('sessiondata : %s',  session)
+
+    if LOGINKEY not in session:
+            logging.info('not login')
+            return redirect('login')
+
     logleveldata = {1: "trace", 2: "packets", 4: "args",
                     8: "conns", 16: "BER", 32: "filter",
                     64: "config", 128: "ACL", 256: "stats",
@@ -50,15 +66,27 @@ def index():
 
     POSTDATA = ""
 
-    ROOT = "cn=admin" + DOMAIN.decode('utf-8')
+    username = session.get(LOGINKEY)
+    ROOT = "cn=" + username.encode('utf-8') + DOMAIN
     PASS = "password"
     ld = ldapconnect(LDAPURL, ROOT, PASS)
+    logging.debug('loginuser is [%s]', username)
+    logging.debug('root is [%s]', ROOT)
+    logging.debug('pass is [%s]', PASS)
 
     if request.method == 'POST':
+
         check = request.form.keys()
-        # チェックボックスの状態を取得するため
-        # すべてのkeyを取得し、buttonのデータを削除
-        check.remove('button')
+        if 'logoutbutton' in request.form.keys():
+            session.pop('loginuser', None)
+            return redirect('/login')
+
+        if 'sendbutton' in request.form.keys():
+            '''
+             チェックボックスの状態のみのデータにするため
+             ボタンの値を除去
+            '''
+            check.remove('sendbutton')
 
         if len(check) == 0:
             check.append('none')
@@ -66,8 +94,8 @@ def index():
         ldapmodify(ld, check)
 
     loglevelstate = ldapsearch(ld, BASE, SCOPE, PARAMETER)
-
-    return render_template('ldapconfig.html', loglevels=logleveldata, loglevelstate=loglevelstate)
+    return render_template('ldapconfig.html', loglevels=logleveldata,
+                           loglevelstate=loglevelstate, loginuser=username)
 
 
 '''
@@ -80,7 +108,7 @@ def ldapconnect(ldapurl, rootdn, password):
         ld = ldap.initialize(ldapurl)
         ld.simple_bind_s(rootdn, password)
     except:
-        print sys.exc_info()
+        logging.error("connect err : %s", sys.exc_info())
         return False
 
     return ld
@@ -101,7 +129,7 @@ def ldapmodify(ld, datas):
     try:
         ld.modify_ext_s(BASE, modlist)
     except:
-        print sys.exc_info()
+        logging.error("modify err : %s", sys.exc_info())
         return False
 
 '''
@@ -113,7 +141,7 @@ def ldapsearch(ld, base, scope, parameter):
     try:
         search_results = ld.search_ext_s(BASE, SCOPE)
     except:
-        print sys.exc_info()
+        logging.error("search err : %s", sys.exc_info())
         return False
 
     datalist = search_results[0][1].get(PARAMETER, [])

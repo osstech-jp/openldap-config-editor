@@ -31,10 +31,12 @@
 <body>
 <h1>LDAPconfing</h1>
 
+<p>{{ loginuser }} でログインしています<p>
+
 <p>現在のLogLevel設定状況</p>
 
 
-<form action="/ldapconfig" method="post">
+<form action="/" method="post">
 <table>
     <tr>
         <th>bit</th>
@@ -57,7 +59,8 @@
     </tr>
 {% endfor %}
 </table>
-    <input id="submitbutton" type="submit" name="button" value="送信">
+   <p> <input id="submitbutton" type="submit" name="sendbutton" value="送信"></p>
+    <p><input id="submitbutton" type="submit" name="logoutbutton" value="ログアウト"></p>
 
 </form>
 </body>
