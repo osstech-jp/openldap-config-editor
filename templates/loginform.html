@@ -44,7 +44,12 @@
 <table>
     <tr>
         <td>UserName</td>
-        <td><input type="text" name="user" required ></td>
+        <td>
+        <select name="user">
+        {% for item in users %}
+            <option value="{{item}}">{{ item }}</option>
+        {% endfor %}
+        </td>
     </tr>
     <tr>
         <td>PassWord</td>

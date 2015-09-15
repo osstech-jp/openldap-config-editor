@@ -16,10 +16,12 @@ inifile = ConfigParser.SafeConfigParser()
 inifile.read('./config.ini')
 
 LDAP = {'URL': inifile.get('ldapconnect','URL'),
-        'SUFFIX': inifile.get('ldapconnect','SUFFIX'),
         'BASE': 'cn=config',
         'SCOPE': ldap.SCOPE_BASE,
         'PARAMETER': 'olcLogLevel'}
+
+# タプルで取得してしまうので辞書型に変換
+USERS = dict(inifile.items('Users'))
 
 
 
@@ -59,18 +61,17 @@ def login():
 
     logging.debug("login page path:%s", request.path)
     logging.debug('sessiondata : %s', session)
-
+    logging.debug('USERS is [%s]',USERS)
     if request.method == 'POST':
         username = request.form.get('user').encode('utf-8')
         password = request.form.get('pass').encode('utf-8')
 
-        logging.debug("before ldapconnect")
+
         ld = ldapconnect(LDAP.get('URL'), username, password)
-        logging.debug("after ldapconnect")
 
         if not ld:
             logging.info('login faild')
-            return render_template('loginform.html', err=True)
+            return render_template('loginform.html', users=USERS, err=True)
         else:
             logging.info('login success')
             logging.debug('form data %s',request.form)
@@ -79,8 +80,8 @@ def login():
             return redirect('/')
 
     if request.method == 'GET':
-        return render_template('loginform.html', err=False)
-
+        return render_template('loginform.html', users=USERS, err=False)
+        
 
 @app.route("/", methods=['GET', 'POST'])
 def index():
@@ -97,13 +98,10 @@ def index():
                     64: "config", 128: "ACL", 256: "stats",
                     512: "stats2", 1024: "shell", 2048: "parse", 16384: "sync"}
 
-    POSTDATA = ""
+    modify_auth = True
     username = session.get(USER).encode('utf-8')
     password = session.get(PASS).encode('utf-8')
     ld = ldapconnect(LDAP.get('URL'), username, password)
-
-    logging.debug('loginuser is [%s]', username)
-    logging.debug('pass is [%s]', password)
 
     if request.method == 'POST':
         
@@ -111,7 +109,7 @@ def index():
         logging.debug("POSTdata : %s",request.form)
         if 'logoutbutton' in request.form.keys():
             session.pop(USER)
-
+            session.pop(PASS)
             return redirect('/login')
 
         if 'sendbutton' in request.form.keys():
@@ -125,11 +123,14 @@ def index():
         if len(check) == 0:
             check.append('none')
 
-        ldapmodify(ld, check, LDAP.get('BASE'), LDAP.get('PARAMETER'))
+        modify_auth = ldapmodify(ld, check, LDAP.get('BASE'), LDAP.get('PARAMETER'))
 
     loglevelstate = ldapsearch(ld, LDAP.get('BASE'), LDAP.get('SCOPE'), LDAP.get('PARAMETER'))
+
+
     return render_template('ldapconfig.html', loglevels=logleveldata,
-                           loglevelstate=loglevelstate, loginuser=username)
+                           loglevelstate=loglevelstate, loginuser=username,
+                           read_auth=loglevelstate, modify_auth=modify_auth)
 
 
 
@@ -140,14 +141,13 @@ ldapに接続する関数
 
 
 def ldapconnect(ldapurl, username, password):
-    rootdn = "cn=" + username + "," + LDAP.get('SUFFIX')
+    rootdn = USERS.get(username) 
     try:
         ld = ldap.initialize(ldapurl)
         ld.simple_bind_s(rootdn, password)
-    except ldap.INVALID_CREDENTIALS:
-        logging.error("connect err : %s", sys.exc_info())
+    except (ldap.INVALID_CREDENTIALS, ldap.INVALID_DN_SYNTAX) as e:
+        logging.error("connect err : %s", e)
         return False
-
     return ld
 
 '''
@@ -165,10 +165,11 @@ def ldapmodify(ld, datas, base, parameter):
 
     try:
         ld.modify_ext_s(base, modlist)
-    except:
+    except ldap.INSUFFICIENT_ACCESS as e:
         logging.error("modify err : %s", sys.exc_info())
         logging.error("modlist : %s",modlist)
         return False
+    return True
 
 '''
 PARAMETERの値をsearchする関数
@@ -178,8 +179,8 @@ PARAMETERの値をsearchする関数
 def ldapsearch(ld, base, scope, parameter):
     try:
         search_results = ld.search_ext_s(base,scope)
-    except:
-        logging.error("search err : %s", sys.exc_info())
+    except ldap.NO_SUCH_OBJECT as e:
+        logging.error("search err : %s", e)
         return False
 
     datalist = search_results[0][1].get(parameter, [])
