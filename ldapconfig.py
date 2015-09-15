@@ -4,26 +4,31 @@ import ldap
 import sys
 import logging
 import random
+import ConfigParser
 
 from flask import Flask, render_template, redirect
 from flask import request, escape, session
 
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = 'test'
 
-LDAPURL = 'ldap://localhost/'
-SUFFIX = ',dc=example,dc=com'
-BASE = 'cn=config'
-SCOPE = ldap.SCOPE_BASE
-FILTER = ""
-ATTR = None
-PARAMETER = 'olcLogLevel'
+inifile = ConfigParser.SafeConfigParser()
+inifile.read('./config.ini')
 
-LOGINKEY = 'loginuser'
+LDAP = {'URL': inifile.get('ldapconnect','URL'),
+        'SUFFIX': inifile.get('ldapconnect','SUFFIX'),
+        'BASE': 'cn=config',
+        'SCOPE': ldap.SCOPE_BASE,
+        'PARAMETER': 'olcLogLevel'}
+
+
+
+USER = 'user'
+PASS = 'pass'
+
 CSRFTOKEN = 'csrf_token'
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format = "line:%(lineno)3d - %(message)s")
 
 
 '''
@@ -36,6 +41,7 @@ def csrf_protect():
         logging.debug("csrf_protect")
         token = session.pop(CSRFTOKEN, None)
         if not token or str(token) != request.form.get('csrf'):
+            logging.error('不正なアクセス')
             abort(403)
         logging.debug('csrf clear\n')
 
@@ -55,12 +61,12 @@ def login():
     logging.debug('sessiondata : %s', session)
 
     if request.method == 'POST':
-        user = request.form.get('user')
-        password = request.form.get('pass')
+        username = request.form.get('user').encode('utf-8')
+        password = request.form.get('pass').encode('utf-8')
 
-        ROOT = "cn=" + user + SUFFIX
-
-        ld = ldapconnect(LDAPURL, ROOT, password)
+        logging.debug("before ldapconnect")
+        ld = ldapconnect(LDAP.get('URL'), username, password)
+        logging.debug("after ldapconnect")
 
         if not ld:
             logging.info('login faild')
@@ -68,7 +74,8 @@ def login():
         else:
             logging.info('login success')
             logging.debug('form data %s',request.form)
-            session[LOGINKEY] = request.form.get('user')
+            session[USER] = request.form.get('user')
+            session[PASS] = request.form.get('pass')
             return redirect('/')
 
     if request.method == 'GET':
@@ -80,7 +87,7 @@ def index():
     logging.debug('config page path:%s', request.path)
     logging.debug('sessiondata : %s',  session)
 
-    if LOGINKEY not in session:
+    if USER not in session:
             logging.info('not login')
             return redirect('/login')
 
@@ -91,21 +98,19 @@ def index():
                     512: "stats2", 1024: "shell", 2048: "parse", 16384: "sync"}
 
     POSTDATA = ""
+    username = session.get(USER).encode('utf-8')
+    password = session.get(PASS).encode('utf-8')
+    ld = ldapconnect(LDAP.get('URL'), username, password)
 
-    username = session.get(LOGINKEY)
-    ROOT = "cn=" + username.encode('utf-8') + SUFFIX
-    PASS = "password"
-    ld = ldapconnect(LDAPURL, ROOT, PASS)
     logging.debug('loginuser is [%s]', username)
-    logging.debug('root is [%s]', ROOT)
-    logging.debug('pass is [%s]', PASS)
+    logging.debug('pass is [%s]', password)
 
     if request.method == 'POST':
         
         check = request.form.keys()
         logging.debug("POSTdata : %s",request.form)
         if 'logoutbutton' in request.form.keys():
-            session.pop('loginuser')
+            session.pop(USER)
 
             return redirect('/login')
 
@@ -120,9 +125,9 @@ def index():
         if len(check) == 0:
             check.append('none')
 
-        ldapmodify(ld, check)
+        ldapmodify(ld, check, LDAP.get('BASE'), LDAP.get('PARAMETER'))
 
-    loglevelstate = ldapsearch(ld, BASE, SCOPE, PARAMETER)
+    loglevelstate = ldapsearch(ld, LDAP.get('BASE'), LDAP.get('SCOPE'), LDAP.get('PARAMETER'))
     return render_template('ldapconfig.html', loglevels=logleveldata,
                            loglevelstate=loglevelstate, loginuser=username)
 
@@ -134,7 +139,8 @@ ldapに接続する関数
 '''
 
 
-def ldapconnect(ldapurl, rootdn, password):
+def ldapconnect(ldapurl, username, password):
+    rootdn = "cn=" + username + "," + LDAP.get('SUFFIX')
     try:
         ld = ldap.initialize(ldapurl)
         ld.simple_bind_s(rootdn, password)
@@ -149,16 +155,16 @@ ldapmodifyする関数
 '''
 
 
-def ldapmodify(ld, datas):
+def ldapmodify(ld, datas, base, parameter):
     modlist = []
     for data in datas:
         if len(modlist) == 0:
-            modlist.append((ldap.MOD_REPLACE, PARAMETER, data))
+            modlist.append((ldap.MOD_REPLACE, parameter, data))
         else:
-            modlist.append((ldap.MOD_ADD, PARAMETER, data))
+            modlist.append((ldap.MOD_ADD, parameter, data))
 
     try:
-        ld.modify_ext_s(BASE, modlist)
+        ld.modify_ext_s(base, modlist)
     except:
         logging.error("modify err : %s", sys.exc_info())
         logging.error("modlist : %s",modlist)
@@ -171,12 +177,12 @@ PARAMETERの値をsearchする関数
 
 def ldapsearch(ld, base, scope, parameter):
     try:
-        search_results = ld.search_ext_s(BASE, SCOPE)
+        search_results = ld.search_ext_s(base,scope)
     except:
         logging.error("search err : %s", sys.exc_info())
         return False
 
-    datalist = search_results[0][1].get(PARAMETER, [])
+    datalist = search_results[0][1].get(parameter, [])
 
     return datalist
 
