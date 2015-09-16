@@ -25,6 +25,19 @@
             height: 30px;
         }
     </style>
+    <script type="text/javascript">
+    <!--
+        window.onload = function() {
+            document.getElementById("timeunlimited").onclick = function() {
+                document.getElementById("timelimit").disabled = this.checked;
+            }
+            document.getElementById("sizeunlimited").onclick = function() {
+                document.getElementById("sizelimit").disabled = this.checked;
+            }
+        }
+    // -->
+    </script>
+
 </head>
 
 
@@ -36,14 +49,13 @@
 <p>現在のLogLevel設定状況</p>
 <form action="/" method="post">
 <input name=csrf type=hidden value="{{ csrftoken() }}">
-
 {% if not read_auth %}
     <strong>閲覧権限がありません</strong>
 {% else %}
+
     {% if not modify_auth %}
         <strong>変更権限がありません</strong>
     {% endif %}
-
 <table>
     <tr>
         <th>bit</th>
@@ -66,11 +78,77 @@
     </tr>
 {% endfor %}
 </table>
+<table>
+    <tr>
+        <td align="center">現在のTimeLimit : {{ timelimit }}</td>
+        <td>
+        {% if timelimit == "unlimited" %}
+            <input type="number" id="timelimit" name="timelimit" style="width:50px;" disabled required>
+            <input type="checkbox" id="timeunlimited" name="timelimit" checked>unlimited
+        {% else %}
+            <input type="number" id="timelimit" name="timelimit" value="{{timelimit}}" style="width:50px;" required>
+            <input type="checkbox" id="timeunlimited" name="timelimit">unlimited
+        {% endif %}
+        </td>    
+    </tr>
+    <tr>
+        <td align="center">現在のSizeLimit : {{ sizelimit }}</td>
+        <td>
+        {% if sizelimit == "unlimited" %}
+            <input type="number" id="sizelimit" name="sizelimit" style="width:50px;" disabled required>
+            <input type="checkbox" id="sizeunlimited"name="sizelimit" checked>unlimited
+        {% else %}
+            <input type="number" id="sizelimit" name="sizelimit" value="{{sizelimit}}" style="width:50px;" required>
+            <input type="checkbox" id="sizeunlimited"name="sizelimit">unlimited
+            
+        {% endif %}
+        </td>
+    </tr>
+</table>
     <p> <input id="submitbutton" type="submit" name="sendbutton" value="送信"></p>
-
-    {% endif %}
-
+{% endif %}
     <p><input id="submitbutton" type="submit" name="logoutbutton" value="ログアウト"></p>
+    
+{% if read_auth %}
+   
+<h1> Global Config Options </h1>
+<table>
+    <th>option</th>
+    <th>state</th>
+{% for key in configoptions %}
+    <tr>
+        <td>{{ key }}</td>
+        <td>
+            <ul>
+            {% for data in configoptions[key]%}
+                <li>{{ data }}</li>
+            {% endfor %}
+            </ul>
+        </td>
+    </tr>
+{% endfor %}
+</table>
+
+
+<h1> Global Database Options </h1>
+<table>
+    <th>option</th>
+    <th>state</th>
+{% for key in databaseoptions %}
+    <tr>
+        <td>{{ key }}</td>
+        <td>
+            <ul>
+            {% for data in databaseoptions[key]%}
+                <li>{{ data }}</li>
+            {% endfor %}
+            </ul>
+        </td>
+    </tr>
+{% endfor %}
+</table>
+
+{% endif %}
 
 </form>
 

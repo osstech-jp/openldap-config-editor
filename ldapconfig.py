@@ -17,7 +17,9 @@ inifile = ConfigParser.SafeConfigParser()
 inifile.read('./config.ini')
 
 LDAP = {'URL': inifile.get('ldapconnect','URL'),
-        'BASE': 'cn=config',
+        'BASE': ['cn=config',
+                 'olcDatabase={-1}frontend,cn=config',
+                 'olcDatabase={1}hdb,cn=config'],
         'SCOPE': ldap.SCOPE_BASE,
         'PARAMETER': 'olcLogLevel'}
 
@@ -109,31 +111,59 @@ def index():
     if request.method == 'POST':
         
         check = request.form.keys()
+        postkeys = check
         logging.debug("POSTdata : %s",request.form)
-        if 'logoutbutton' in request.form.keys():
+        if 'logoutbutton' in postkeys:
             session.pop(USER)
             session.pop(PASS)
             return redirect('/login')
 
-        if 'sendbutton' in request.form.keys():
-            '''
-             チェックボックスの状態のみのデータにするため
-             ボタンとCSRFの値を除去
-            '''
-            check.remove('sendbutton')
-            check.remove('csrf')
+        if 'sendbutton' in postkeys:
 
-        if len(check) == 0:
-            check.append('none')
+            modloglevel = []
+            for key in postkeys:
+                if key in logleveldata.values():
+                    modloglevel.append(key)
+            if len(modloglevel) == 0:
+                modloglevel.append('none')
 
-        modify_auth = ldapmodify(ld, check, LDAP.get('BASE'), LDAP.get('PARAMETER'))
+            timelimit = request.form.get('timelimit')
+            if timelimit == 'on':
+                modtimelimit = ['unlimited']
+            else:
+                modtimelimit = [timelimit.encode('utf-8')]
 
-    loglevelstate = ldapsearch(ld, LDAP.get('BASE'), LDAP.get('SCOPE'), LDAP.get('PARAMETER'))
+            sizelimit = request.form.get('sizelimit')
+            if sizelimit == 'on':
+                modsizelimit = ['unlimited']
+            else:
+                modsizelimit = [sizelimit.encode('utf-8')]
 
+            print modloglevel
+            print modtimelimit
+            print modsizelimit
+            
+            modify_auth = ldapmodify(ld, modloglevel, LDAP.get('BASE')[0], PARAMETERS[0])
+            modify_auth = ldapmodify(ld, modtimelimit, LDAP.get('BASE')[1], PARAMETERS[1])
 
-    return render_template('ldapconfig.html', loglevels=logleveldata,
-                           loglevelstate=loglevelstate, loginuser=username,
-                           read_auth=loglevelstate, modify_auth=modify_auth)
+    configoptions = ldapsearch(ld, LDAP.get('BASE')[0], LDAP.get('SCOPE'))
+    databaseoptions = ldapsearch(ld, LDAP.get('BASE')[1], LDAP.get('SCOPE'))
+    examples = ldapsearch(ld, LDAP.get('BASE')[2], LDAP.get('SCOPE'))
+
+    if not configoptions:
+        return render_template('ldapconfig.html',read_auth=False,loginuser=username)
+    else:
+        loglevelstate = configoptions.get(PARAMETERS[0],[])
+        timelimit = databaseoptions.get(PARAMETERS[1],['unlimited'])[0]
+        sizelimit = databaseoptions.get(PARAMETERS[2],['unlimited'])[0]
+
+        return render_template('ldapconfig.html',
+                           loglevels=logleveldata, loglevelstate=loglevelstate,
+                           timelimit=timelimit, sizelimit=sizelimit,
+                           databaseoptions=databaseoptions,
+                           configoptions=configoptions,
+                           loginuser=username,
+                           read_auth=configoptions, modify_auth=modify_auth)
 
 
 
@@ -159,14 +189,8 @@ ldapmodifyする関数
 
 
 def ldapmodify(ld, datas, base, parameter):
-    modlist = []
-    for data in datas:
-        if len(modlist) == 0:
-            modlist.append((ldap.MOD_REPLACE, parameter, data))
-        else:
-            modlist.append((ldap.MOD_ADD, parameter, data))
-
     try:
+        modlist = [(ldap.MOD_REPLACE, parameter, datas)]
         ld.modify_ext_s(base, modlist)
     except ldap.INSUFFICIENT_ACCESS as e:
         logging.error("modify err : %s", sys.exc_info())
@@ -179,14 +203,13 @@ PARAMETERの値をsearchする関数
 '''
 
 
-def ldapsearch(ld, base, scope, parameter):
+def ldapsearch(ld, base, scope):
     try:
         search_results = ld.search_ext_s(base,scope)
     except ldap.NO_SUCH_OBJECT as e:
         logging.error("search err : %s", e)
         return False
-
-    datalist = search_results[0][1].get(parameter, [])
+    datalist = search_results[0][1]
 
     return datalist
 
