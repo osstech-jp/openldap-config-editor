@@ -47,7 +47,7 @@
         <td>
         <select name="user">
         {% for item in users %}
-            <option value="{{item}}">{{ item }}</option>
+            <option value="{{ item }}">{{ item }}</option>
         {% endfor %}
         </td>
     </tr>
@@ -62,7 +62,6 @@
     </tr>
 </table>
 
-<h2>{{ csrftoken() }}</h2>
 </form>
 </body>
 

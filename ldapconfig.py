@@ -8,6 +8,7 @@ import ConfigParser
 
 from flask import Flask, render_template, redirect
 from flask import request, escape, session
+from collections import OrderedDict
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'test'
@@ -20,8 +21,8 @@ LDAP = {'URL': inifile.get('ldapconnect','URL'),
         'SCOPE': ldap.SCOPE_BASE,
         'PARAMETER': 'olcLogLevel'}
 
-# タプルで取得してしまうので辞書型に変換
-USERS = dict(inifile.items('Users'))
+# 順序付き辞書型に変換
+USERS = OrderedDict(inifile.items('Users'))
 
 
 
@@ -29,6 +30,8 @@ USER = 'user'
 PASS = 'pass'
 
 CSRFTOKEN = 'csrf_token'
+
+PARAMETERS = ['olcLogLevel','olcTimeLimit','olcSizeLimit']
 
 logging.basicConfig(level=logging.DEBUG, format = "line:%(lineno)3d - %(message)s")
 
