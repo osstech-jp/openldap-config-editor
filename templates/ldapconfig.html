@@ -5,7 +5,7 @@
 <head>
     <style type="text/css">
         table {
-            border: 3px #000000 double;
+            border: 3px #000000 solid;
             align:center;
         }
 
@@ -35,6 +35,62 @@
                 document.getElementById("sizelimit").disabled = this.checked;
             }
         }
+
+        function addIndex()
+        {
+            var tbody = document.getElementById("indexlist");
+            var y = tbody.rows.length;
+            var tr = document.createElement("tr");
+            tr.setAttribute("name", "index_" + y);
+            var td_input = document.createElement("td");
+            var td_select = document.createElement("td");
+            var td_button = document.createElement("td");
+
+            var input = document.createElement("input");
+            input.setAttribute("type", "text");
+            input.setAttribute("name", "index_" + y);
+            input.required = true;
+            td_input.appendChild(input);
+
+            var select = document.createElement("select");
+            var options = ["pres", "eq", "approx", "sub"]
+            for (var i = 0; i<options.length; i++) {
+                select.options[i] = new Option(options[i],options[i]);
+            }
+            select.setAttribute("name","option_" + y)
+            td_select.appendChild(select);
+
+            var button = document.createElement("input");
+            button.setAttribute("type","button");
+            button.setAttribute("id","button_" + y);
+            button.setAttribute("value","消去");
+            button.setAttribute("onClick","delIndex(" + y +");");
+            td_button.appendChild(button);
+
+            tr.appendChild(td_input)
+            tr.appendChild(td_select)
+            tr.appendChild(td_button)
+            tbody.appendChild(tr);
+            
+        }
+        function delIndex(num) {
+            var tbody = document.getElementById("indexlist")
+            tbody.deleteRow(num)
+            rename();
+        }
+        function rename() {
+            var tbody = document.getElementById("indexlist")
+            for(var i = 1; i < tbody.rows.length; i++){
+                var row = tbody.rows[i];
+                row.setAttribute("name","index_" + i);
+                row.cells[0].firstChild.setAttribute("name", "index_" + i);
+                row.cells[1].firstChild.setAttribute("name", "option_" + i);
+                row.cells[2].firstChild.setAttribute("id","button_" + i);
+                row.cells[2].firstChild.setAttribute("onclick", "delIndex(" + i + ");");
+
+            }
+        }
+
     // -->
     </script>
 
@@ -54,7 +110,7 @@
 {% else %}
 
     {% if not modify_auth %}
-        <strong>変更権限がありません</strong>
+        <strong>変更に失敗しました</strong>
     {% endif %}
 <table>
     <tr>
@@ -80,7 +136,7 @@
 </table>
 <table>
     <tr>
-        <td align="center">現在のTimeLimit : {{ timelimit }}</td>
+        <th align="center">現在のTimeLimit : {{ timelimit }}</th>
         <td>
         {% if timelimit == "unlimited" %}
             <input type="number" id="timelimit" name="timelimit" style="width:50px;" disabled required>
@@ -92,7 +148,7 @@
         </td>    
     </tr>
     <tr>
-        <td align="center">現在のSizeLimit : {{ sizelimit }}</td>
+        <th align="center">現在のSizeLimit : {{ sizelimit }}</th>
         <td>
         {% if sizelimit == "unlimited" %}
             <input type="number" id="sizelimit" name="sizelimit" style="width:50px;" disabled required>
@@ -104,6 +160,32 @@
         {% endif %}
         </td>
     </tr>
+</table>
+
+<table>
+    <tbody id="indexlist">
+    <tr>
+        <th colspan="3">olcDbIndex</th>
+    </tr>
+    {% set optionlist = ['pres', 'eq', 'approx', 'sub'] %}
+    {% for index in dbindex %}
+        <tr name="index_{{ loop.index}}">
+            <td><input type="text" name="index_{{ loop.index }}" value="{{ index[0] }}" required>
+            </td>
+            <td><select name="option_{{ loop.index }}">
+            {% for option in optionlist %}
+                {% if index[1] == option %}
+                    <option value="{{ option }}" selected>{{option}}</option>
+                {% else %}
+                    <option value="{{ option }}">{{option}}</option>
+                {% endif %}
+            {% endfor %}
+            </select></td>
+            <td><input type="button" id="button_{{loop.index}}" value="消去" onClick="delIndex({{ loop.index }});"></td>
+        </tr>
+    {% endfor %}
+   </tbody>
+        <tr><td colspan="3" align="center"><input type="button" id="submitbutton" value="追加" onClick="addIndex();"></td></tr>
 </table>
     <p> <input id="submitbutton" type="submit" name="sendbutton" value="送信"></p>
 {% endif %}
@@ -129,7 +211,6 @@
 {% endfor %}
 </table>
 
-
 <h1> Global Database Options </h1>
 <table>
     <th>option</th>
@@ -147,6 +228,26 @@
     </tr>
 {% endfor %}
 </table>
+
+
+<h1> Examples </h1>
+<table>
+    <th>option</th>
+    <th>state</th>
+{% for key in examples %}
+    <tr>
+        <td>{{ key }}</td>
+        <td>
+            <ul>
+            {% for data in examples[key]%}
+                <li>{{ data }}</li>
+            {% endfor %}
+            </ul>
+        </td>
+    </tr>
+{% endfor %}
+</table>
+
 
 {% endif %}
 

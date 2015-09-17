@@ -33,7 +33,7 @@ PASS = 'pass'
 
 CSRFTOKEN = 'csrf_token'
 
-PARAMETERS = ['olcLogLevel','olcTimeLimit','olcSizeLimit']
+PARAMETERS = ['olcLogLevel','olcTimeLimit','olcSizeLimit','olcDbIndex']
 
 logging.basicConfig(level=logging.DEBUG, format = "line:%(lineno)3d - %(message)s")
 
@@ -72,7 +72,7 @@ def login():
         password = request.form.get('pass').encode('utf-8')
 
 
-        ld = ldapconnect(LDAP.get('URL'), username, password)
+        ld = ldapconnect(LDAP['URL'], username, password)
 
         if not ld:
             logging.info('login faild')
@@ -86,7 +86,7 @@ def login():
 
     if request.method == 'GET':
         return render_template('loginform.html', users=USERS, err=False)
-        
+
 
 @app.route("/", methods=['GET', 'POST'])
 def index():
@@ -106,13 +106,13 @@ def index():
     modify_auth = True
     username = session.get(USER).encode('utf-8')
     password = session.get(PASS).encode('utf-8')
-    ld = ldapconnect(LDAP.get('URL'), username, password)
+    ld = ldapconnect(LDAP['URL'], username, password)
 
     if request.method == 'POST':
-        
+
         check = request.form.keys()
         postkeys = check
-        logging.debug("POSTdata : %s",request.form)
+        logging.debug("\n\nPOSTdata : %s\n\n",request.form)
         if 'logoutbutton' in postkeys:
             session.pop(USER)
             session.pop(PASS)
@@ -139,29 +139,54 @@ def index():
             else:
                 modsizelimit = [sizelimit.encode('utf-8')]
 
+            moddbindex = []
+            if 'index_1' in check:
+            
+                key = 1
+                index_key = 'index_' + str(key)
+                option_key = 'option_' + str(key)
+                while index_key in check:
+                    Index = request.form.get(index_key).encode('utf-8')\
+                    + " " + request.form.get(option_key).encode('utf-8')
+                    moddbindex.append(Index)
+                    key += 1
+                    index_key = "index_" + str(key)
+                    option_key = 'option_' + str(key)
+            else:
+                moddbindex.append('')               
+
             print modloglevel
             print modtimelimit
             print modsizelimit
-            
-            modify_auth = ldapmodify(ld, modloglevel, LDAP.get('BASE')[0], PARAMETERS[0])
-            modify_auth = ldapmodify(ld, modtimelimit, LDAP.get('BASE')[1], PARAMETERS[1])
+            print moddbindex
 
-    configoptions = ldapsearch(ld, LDAP.get('BASE')[0], LDAP.get('SCOPE'))
-    databaseoptions = ldapsearch(ld, LDAP.get('BASE')[1], LDAP.get('SCOPE'))
-    examples = ldapsearch(ld, LDAP.get('BASE')[2], LDAP.get('SCOPE'))
+            modify_auth = ldapmodify(ld, modloglevel, LDAP['BASE'][0], PARAMETERS[0])
+            modify_auth = ldapmodify(ld, modtimelimit, LDAP['BASE'][1], PARAMETERS[1])
+            modify_auth = ldapmodify(ld, modsizelimit, LDAP['BASE'][1], PARAMETERS[2])
+            modify_auth = ldapmodify(ld, moddbindex, LDAP['BASE'][2], PARAMETERS[3])
+
+    configoptions = ldapsearch(ld, LDAP.get('BASE')[0], LDAP['SCOPE'])
+    databaseoptions = ldapsearch(ld, LDAP.get('BASE')[1], LDAP['SCOPE'])
+    examples = ldapsearch(ld, LDAP.get('BASE')[2], LDAP['SCOPE'])
+
 
     if not configoptions:
         return render_template('ldapconfig.html',read_auth=False,loginuser=username)
     else:
         loglevelstate = configoptions.get(PARAMETERS[0],[])
-        timelimit = databaseoptions.get(PARAMETERS[1],['unlimited'])[0]
-        sizelimit = databaseoptions.get(PARAMETERS[2],['unlimited'])[0]
+        timelimit = databaseoptions.get(PARAMETERS[1],['3600'])[0]
+        sizelimit = databaseoptions.get(PARAMETERS[2],['500'])[0]
+        DbIndex = examples.get(PARAMETERS[3],[])
+        DbIndex = [Index.split(' ') for Index in DbIndex]
 
+        print DbIndex
         return render_template('ldapconfig.html',
                            loglevels=logleveldata, loglevelstate=loglevelstate,
                            timelimit=timelimit, sizelimit=sizelimit,
+                           dbindex=DbIndex,
                            databaseoptions=databaseoptions,
                            configoptions=configoptions,
+                           examples=examples,
                            loginuser=username,
                            read_auth=configoptions, modify_auth=modify_auth)
 
@@ -174,7 +199,11 @@ ldapに接続する関数
 
 
 def ldapconnect(ldapurl, username, password):
-    rootdn = USERS.get(username) 
+    rootdn = USERS.get(username,[])
+    if len(rootdn) == 0:
+        logging.error("username is None")
+        return False
+
     try:
         ld = ldap.initialize(ldapurl)
         ld.simple_bind_s(rootdn, password)
@@ -195,6 +224,9 @@ def ldapmodify(ld, datas, base, parameter):
     except ldap.INSUFFICIENT_ACCESS as e:
         logging.error("modify err : %s", sys.exc_info())
         logging.error("modlist : %s",modlist)
+        return False
+    except Exception as e:
+        logging.error("mod error : %s", e)
         return False
     return True
 
